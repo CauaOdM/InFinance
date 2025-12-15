@@ -8,80 +8,113 @@ import matplotlib.pyplot as plt
 load_dotenv(".env.local")
 genai.configure(api_key=os.getenv("API_KEY"))
 
+# Função para calcular o RSI 
+def calcular_rsi(dados, janela=14):
+    delta = dados.diff()
+    ganho = (delta.where(delta > 0, 0)).rolling(window=janela).mean()
+    perda = (-delta.where(delta < 0, 0)).rolling(window=janela).mean()
+    
+    rs = ganho / perda
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def dados_calculate(acao):
     print(f"Iniciando a análise de {acao}...")
 
     print("Carregando cotações...")
-    dados = yf.download(acao,period="6mo", progress=False)
+    
+    dados = yf.download(acao, period="6mo", progress=False)
 
-    if len(dados)==0:
+    if len(dados) == 0:
         print("Ação não encontrada!")
         return
     
-    precos = dados['Close'].values.flatten()
+    # Selecionar a coluna de preços (fechamento)
+    if 'Close' in dados.columns:
+        series_precos = dados['Close']
+    else:
+        series_precos = dados.iloc[:, 0]
 
+    
     print("Calculando Indicadores...")
+    rsi = calcular_rsi(series_precos)
 
-    #Média móvel de 20 dias:
+    
+    precos_numpy = series_precos.values.flatten()
 
-    window = 20
-    weights = np.ones(window)/window
-    media_movel = np.convolve(precos,weights, mode='valid')
+    # Média móvel de 20 dias (NumPy)
+    janela = 20
+    weights = np.ones(janela) / janela
+    media_movel = np.convolve(precos_numpy, weights, mode='valid')
 
-    #ATUAL:
-    preco_atual = precos[-1]
+    # ATUAL
+    preco_atual = precos_numpy[-1]
     media_atual = media_movel[-1]
+    rsi_atual = rsi.iloc[-1].item()
 
-    #VOLATILIDADE (DESVIO PADRÃO):
-    retornos = np.diff(precos) / precos[:-1]
+    # TENDÊNCIA
+    if preco_atual > media_atual:
+        tendencia = "ALTA"
+    else:
+        tendencia = "BAIXA"
+
+    # VOLATILIDADE
+    retornos = np.diff(precos_numpy) / precos_numpy[:-1]
     volatilidade = np.std(retornos) * 100
 
     print(f"Volatilidade: {volatilidade:.2f}%")
 
-    print("-="*30)
-    print("Gerando gráfico...")
-    print("-="*30)
-
-    plt.figure(figsize=(10, 5))
-
-    #Preço real
-
-    plt.plot(dados.index[window-1:], precos[window-1:], label='Preço Real', color='blue', alpha=0.5)
-
-    #Média móvel
-
-    plt.plot(dados.index[window-1:], media_movel, label='Média Móvel (20d)', color='orange', linewidth=2)
-
-    plt.title(f'Análise de {acao}')
-    plt.xlabel('Data')
-    plt.ylabel('Preço')
-    plt.legend()
-    plt.grid(True)
+    # GRÁFICOS
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), gridspec_kw={'height_ratios': [3, 1]})
+    
+    # Gráfico 1: Preço e Média
+    
+    ax1.plot(dados.index, precos_numpy, label='Preço', color='blue', alpha=0.6)
+    ax1.plot(dados.index[janela-1:], media_movel, label='Média (20)', color='orange', linestyle='--')
+    ax1.set_title(f"Análise Técnica: {acao}")
+    ax1.legend()
+    ax1.grid(True)
+    
+    # Gráfico 2: RSI
+    ax2.plot(dados.index, rsi, label='RSI (14)', color='purple')
+    ax2.axhline(70, color='red', linestyle='--', alpha=0.5)
+    ax2.axhline(30, color='green', linestyle='--', alpha=0.5)
+    ax2.set_ylabel('RSI')
+    ax2.grid(True)
     plt.show()
-
-    nome_arquivo = f"grafico_{acao}.png"
+    
+    nome_arquivo = f"analise_pro_{acao}.png"
+    plt.tight_layout()
     plt.savefig(nome_arquivo)
     plt.close()
     print(f"✅ Gráfico salvo: {nome_arquivo}")
 
     print("Consultando Agente AI...")
 
+    
     model = genai.GenerativeModel('gemini-2.5-flash')
 
     prompt = f"""
-    Você é um Analista Técnico de Investimentos Sênior.
-    Analise os dados técnicos abaixo para a ação {acao}:
+    Atue como um Analista Financeiro Quantitativo.
+    Analise os indicadores técnicos de {acao}:
     
-    1. Preço Atual: R$ {preco_atual:.2f}
-    2. Média Móvel (20 dias): R$ {media_atual:.2f}
-    3. Volatilidade do período: {volatilidade:.2f}% (Considerar > 2% como alta).
+    1. Preço vs Média (Tendência):
+       - Preço: {preco_atual:.2f}
+       - Média (20): {media_atual:.2f}
+       - Status: {tendencia}
+       
+    2. RSI (Momentum/Velocidade):
+       - Valor Atual: {rsi_atual:.2f}
+       - Regra: RSI > 70 é Sobrecompra (risco de queda). RSI < 30 é Sobrevenda (chance de subida).
+       - Volatilidade: {volatilidade:.2f}%
     
-    Tarefa:
-    - Compare o Preço com a Média (Se preço > média = Tendência de Alta/Baixa).
-    - Avalie o risco baseado na volatilidade.
-    - Dê um veredito final curto: COMPRA, VENDA ou AGUARDAR.
+    TAREFA:
+    Cruze as informações.
+    - Exemplo: Se Tendência é BAIXA mas RSI < 30, pode ser uma chance de reversão (compra arriscada).
+    - Exemplo: Se Tendência é ALTA e RSI > 70, o preço pode estar esticado demais (cuidado).
     
-    Responda em tópicos curtos e diretos.
+    Dê um veredito final: COMPRA FORTE, COMPRA, NEUTRO, VENDA ou VENDA FORTE.
+    Justifique em 3 linhas.
     """
     
     response = model.generate_content(prompt)
