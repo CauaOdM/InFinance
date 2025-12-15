@@ -64,7 +64,7 @@ def dados_calculate(acao):
 
     print(f"Volatilidade: {volatilidade:.2f}%")
 
-    # GRÁFICOS
+    # GRÁFICOS feitos com auxilio de IA generativa
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), gridspec_kw={'height_ratios': [3, 1]})
     
     # Gráfico 1: Preço e Média
@@ -93,6 +93,8 @@ def dados_calculate(acao):
 
     
     model = genai.GenerativeModel('gemini-2.5-flash')
+
+    #Prompt feito com auxilio de IA generativa
 
     prompt = f"""
     Atue como um Analista Financeiro Quantitativo.
