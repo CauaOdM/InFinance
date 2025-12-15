@@ -1,5 +1,6 @@
 import yfinance as yf
 import numpy as np
+import matplotlib.pyplot as plt
 
 def dados_calculate(acao):
     print(f"Processando {acao}...")
@@ -12,35 +13,34 @@ def dados_calculate(acao):
     
     precos = dados['Close'].values.flatten()
 
-    #Vamos calculas a média móvel de 20 dias:
+    #Média móvel de 20 dias:
 
     window = 20
     weights = np.ones(window)/window
     media_movel = np.convolve(precos,weights, mode='valid')
 
-    #dados mais atuais:
-
-    preco_atual = precos[-1]
-    media_atual = media_movel[-1]
-
-    diferenca = preco_atual - media_atual
-
-    if diferenca > 0:
-        STATUS = 'ACIMA'
-    else:
-        STATUS = 'ABAIXO'
-    
     print("-="*30)
-    print(f"Preço Atual: R$ {preco_atual:.2f}")
-    print(f"Média Móvel (20d): R$ {media_atual:.2f}")
-    print(f"Status : O preço está {STATUS} da média.")
-    print("-=" * 30)
+    print("Gerando gráfico...")
+    print("-="*30)
 
-    return dados, media_movel
+    plt.figure(figsize=(10, 5))
+
+    #Preço real
+
+    plt.plot(dados.index[window-1:], precos[window-1:], label='Preço Real', color='blue', alpha=0.5)
+
+    #Média móvel
+
+    plt.plot(dados.index[window-1:], media_movel, label='Média Móvel (20d)', color='orange', linewidth=2)
+
+    plt.title(f'Análise de {acao}')
+    plt.xlabel('Data')
+    plt.ylabel('Preço')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
 
 if __name__ == "__main__":
-    acao = input("Digite o código da ação (ex: PETR4.SA): ").upper()
+    acao = input("Digite o ticker (ex: PETR4.SA): ").upper()
     dados_calculate(acao)
-
-
-
