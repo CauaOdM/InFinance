@@ -98,6 +98,9 @@ celerybeat.pid
 # Environments
 .env.local
 .venv
+
+# Internal documentation (not shared)
+IMPROVEMENTS.md
 env/
 venv/
 ENV/
