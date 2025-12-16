@@ -2,7 +2,7 @@
 
 > ⚠️Este README foi escrito por IA generativa, e o código também conta com trechos assistidos por IA (marcados ao longo do arquivo). Use com senso crítico.
 
-Autor: **CauaOdM** (GitHub) — estudante de Engenharia de Computação no Insper.
+Autor: [CauaOdM](https://github.com/CauaOdM) — estudante de Engenharia de Computação no Insper.
 
 Inspiração do nome: "InFinance" faz homenagem a uma entidade estudantil do Insper dedicada a capacitar alunos para o mercado financeiro.
 
